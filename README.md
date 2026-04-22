@@ -2,9 +2,42 @@
 
 ![Mert Car Rental Homepage](./images/homepage.jpg)
 
-> An end-to-end car rental platform for the Turkish market with **real-time vehicle availability**, **3D Secure payment processing** (GL-58 banking compliance), and **third-party fleet management API integration**. Guest checkout flow optimized for conversion.
+## Hook
+
+An **end-to-end car rental platform** for the Turkish market integrating a **live fleet management API**, **3D Secure card payments** (GL-58 banking compliance), and a **guest checkout flow** for conversion optimization. Shipped solo in ~3 months, replacing a fully manual phone/paper booking workflow.
 
 **🔗 [Live Platform](https://mertcarrental.com)** · **Status:** Production
+
+---
+
+## ⚡ Key Achievements
+
+- 💳 **3D Secure + SHA-512 hash verification** with Ziraat Bank NestPay gateway
+- 🇹🇷 **GL-58 Turkish banking compliance** for card transaction security
+- 🔗 **KolayCAR fleet API integration** — real-time availability, no data duplication
+- 🚪 **Guest checkout flow** — zero-friction booking without account creation
+- ⚡ **Booking time:** manual 20+ min → **fully online in under 2 min**
+- 🔐 **Type-safe end-to-end** — TypeScript strict + Zod validation
+- 🚀 **Netlify auto-deploy** on push to `main` (~2 min deploy)
+- 📱 **Mobile-responsive** Turkish-first UI with i18n-ready translation layer
+
+---
+
+## 👤 My Role
+
+**Solo Full-Stack Developer + Third-party Integration Specialist** (Oct 2025 – Jan 2026)
+
+End-to-end responsibility:
+- **Architecture design** — React frontend + Express TypeScript backend + MongoDB
+- **Backend development** — Express 5, Mongoose, Zod validation, JWT cookie auth
+- **Frontend development** — React 19, RTK Query, Tailwind, Radix UI, react-hook-form
+- **3D Secure payment integration** — NestPay (Ziraat Bank), SHA-512 hashing, callback handling
+- **KolayCAR API integration** — fleet availability sync, booking handshake, graceful fallback
+- **Guest checkout design** — UX research + optional-account-creation flow
+- **Deploy pipeline** — Netlify + MongoDB Atlas
+- **Security hardening** — GL-58 compliance, rate limiting, Helmet, CORS
+
+Only external dependency: the client for business requirements + test card setup with the bank.
 
 ---
 
@@ -67,14 +100,52 @@ An end-to-end car rental SaaS with:
                        └──────────────┘
 ```
 
-**Key architectural decisions:**
+**Request lifecycle:**
 
-- **MongoDB over SQL** — Flexible schema for car attributes (varying feature sets across models), fast for read-heavy booking lookups
-- **HTTP-only secure cookies for JWT** — XSS-safe, no localStorage tokens
-- **RTK Query on frontend** — Single source of truth for server state, automatic cache invalidation
-- **Fleet API as source of truth** — Vehicle data lives in KolayCAR; platform mirrors for display, syncs on changes
-- **3D Secure callback pattern** — Browser redirects to bank, bank posts result back to our callback endpoint
-- **Guest booking by default** — Reservations optionally linked to accounts, not required
+1. Browser → Netlify CDN → React SPA
+2. API calls → Express backend (with HttpOnly JWT cookie)
+3. Availability check → KolayCAR API (live fleet data)
+4. Booking creation → MongoDB write + KolayCAR handshake
+5. Payment → Redirect to NestPay (bank) → SMS OTP → callback to backend → verify hash → confirm booking
+
+---
+
+## 🧠 Tech Decisions (Why, not What)
+
+### Why MongoDB over PostgreSQL/MySQL?
+**Decision:** MongoDB Atlas managed cluster.
+**Reason:** Car attributes vary wildly across models (electric vehicles have `batteryRange`, sedans have `trunkCapacity`, etc.). Flexible schema avoids migration churn. Read-heavy workload (availability checks) fits well with Mongo's read performance.
+**Trade-off:** Weaker joins; handled by denormalizing booking snapshots to avoid cross-collection lookups in hot paths.
+
+### Why Netlify over AWS?
+**Decision:** Netlify for frontend hosting.
+**Reason:** Zero-config SPA hosting, automatic deploys on git push, edge CDN included, free tier covers this traffic volume. AWS S3 + CloudFront would be equivalent technically but 3x more setup time.
+**Trade-off:** Less infrastructure control than AWS, but MVP didn't need it.
+
+### Why HttpOnly cookies for JWT instead of localStorage?
+**Decision:** JWT stored in Secure + HttpOnly + SameSite=None cookies.
+**Reason:** XSS-safe — JavaScript can't read the cookie, so even if there's a DOM injection, tokens stay private. SameSite=None required because frontend and backend are on different origins in staging.
+**Trade-off:** CSRF risk (mitigated via CSRF tokens on mutation endpoints) and more complex cross-origin setup.
+
+### Why build 3D Secure from scratch instead of Stripe/iyzico?
+**Decision:** Direct integration with NestPay (bank's gateway).
+**Reason:** Client required **Ziraat Bank** for business reasons (merchant account already exists). Stripe isn't available in Turkey for this use case; iyzico has higher commissions. Direct NestPay = lower commission + compliance handled natively.
+**Trade-off:** Significantly more integration work (hash generation, callback handling, compliance documentation), but cost savings over time and full control over the payment flow.
+
+### Why guest checkout as the default?
+**Decision:** Bookings allowed without account creation. Account creation is optional and deferred.
+**Reason:** User research showed **most rental customers are one-time visitors** (tourists, business travelers). Forcing registration at checkout drove significant drop-off.
+**Trade-off:** Lost signup data for remarketing, but gained booking conversion. Added **"save details for next time"** post-booking to capture interested users.
+
+### Why RTK Query over React Query or SWR?
+**Decision:** Redux Toolkit Query for server state.
+**Reason:** Already using Redux for UI state (auth, cart). RTK Query integrates natively — one store, one devtools, one mental model. Automatic cache invalidation via tag system handles complex interactions (booking creation invalidates car availability).
+**Trade-off:** More boilerplate than React Query, but consolidated state management outweighs it.
+
+### Why Express 5 over Fastify or NestJS?
+**Decision:** Express 5 with TypeScript strict mode.
+**Reason:** Mature ecosystem, widest middleware support (helmet, morgan, express-rate-limit), familiar to any Node developer. NestJS adds decorators + DI but is overkill for ~20 endpoints.
+**Trade-off:** Less performant than Fastify in benchmarks, but not a bottleneck here (DB and external API latency dominates).
 
 ---
 
@@ -111,7 +182,7 @@ An end-to-end car rental SaaS with:
 
 ---
 
-## ⚡ Key Technical Achievements
+## 🔍 Deep Dive: Key Technical Achievements
 
 ### 1. KolayCAR Fleet API Integration
 Real-time vehicle availability synced with the client's existing fleet management system:
@@ -229,8 +300,3 @@ End-to-end type safety:
 - Customer data / real bookings
 
 > For a public repository with a similar full-stack pattern (RTK Query, JWT cookie auth, Tailwind UI), see my [FastChat](https://github.com/RRimeKS/fastchat) project.
-
----
-
-**Team size:** Solo full-stack developer
-**Role:** Full-stack Developer + Third-party API Integration
